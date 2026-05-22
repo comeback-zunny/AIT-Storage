@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <title>GitHub 이미지 뷰어</title>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; }
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 0; }
+        h1 { padding: 20px 0 10px 0; font-size: 24px; }
         .gallery { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 20px; }
         .gallery img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .gallery img:hover { transform: scale(1.05); }
@@ -24,25 +25,23 @@
     </div>
 
     <script>
-        // 현재 브라우저 주소창에서 자동으로 username과 repo 이름을 추출합니다.
-        const pathParts = window.location.pathname.split('/').filter(Boolean);
-        const username = window.location.hostname.split('.')[0];
-        const repo = pathParts[0] || "";
-
-        // 알려주신 폴더 경로 적용 (공백은 그대로 문자로 입력해야 합니다)
+        // 고정된 실제 사용자 정보 적용
+        const username = "comeback-zunny";
+        const repo = "AIT-Storage";
         const folderPath = "playing/Jewel Coloring/0NN"; 
 
-        // GitHub API 호출 주소 생성
+        // 올바른 GitHub API 주소로 수정함
         const apiUrl = `https://github.com{username}/${repo}/contents/${folderPath}`;
 
         fetch(apiUrl)
             .then(res => {
-                if (!res.ok) throw new Error("폴더를 찾을 수 없습니다. 경로를 확인해주세요.");
+                if (!res.ok) throw new Error("폴더를 찾을 수 없거나 이미지가 없습니다. 경로를 확인해주세요.");
                 return res.json();
             })
             .then(data => {
                 const gallery = document.getElementById('gallery');
-                // 이미지 파일 확장자 필터링
+                
+                // 이미지 파일 확장자 필터링 (정규식 공백 제거)
                 const images = data.filter(file => /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name));
                 
                 if (images.length === 0) {
@@ -62,7 +61,7 @@
             })
             .catch(err => {
                 console.error(err);
-                document.getElementById('gallery').innerHTML = `<p style="color:red;">${err.message}</p>`;
+                document.getElementById('gallery').innerHTML = `<p style="color:#ff6b6b; font-weight:bold;">${err.message}</p>`;
             });
     </script>
 </body>

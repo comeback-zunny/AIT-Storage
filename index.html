@@ -9,7 +9,7 @@
         .gallery img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .gallery img:hover { transform: scale(1.05); }
         /* 모달 창 스타일 */
-        #modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
+        #modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000; }
         #modal img { max-width: 90%; max-height: 90%; border-radius: 5px; }
     </style>
 </head>
@@ -24,24 +24,35 @@
     </div>
 
     <script>
-        // ⚠️ 본인의 환경에 맞게 아래 3개 변수를 수정하세요!
-        const username = "본인의_깃허브_아이디";
-        const repo = "저장소_이름";
-        const folderPath = "이미지가_모여있는_폴더명"; // 예: "images" 또는 "assets/photos"
+        // 현재 브라우저 주소창에서 자동으로 username과 repo 이름을 추출합니다.
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const username = window.location.hostname.split('.')[0];
+        const repo = pathParts[0] || "";
 
-        // GitHub API를 통해 폴더 내 파일 목록 가져오기
-        const apiUrl = `https://github.com{"comeback-zunny"}/${"AIT-Storage"}/contents/${"playing"}`;
+        // 알려주신 폴더 경로 적용 (공백은 그대로 문자로 입력해야 합니다)
+        const folderPath = "playing/Jewel Coloring/0NN"; 
+
+        // GitHub API 호출 주소 생성
+        const apiUrl = `https://github.com{username}/${repo}/contents/${folderPath}`;
 
         fetch(apiUrl)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("폴더를 찾을 수 없습니다. 경로를 확인해주세요.");
+                return res.json();
+            })
             .then(data => {
                 const gallery = document.getElementById('gallery');
-                // 이미지 확장자 필터링
+                // 이미지 파일 확장자 필터링
                 const images = data.filter(file => /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name));
                 
+                if (images.length === 0) {
+                    gallery.innerHTML = "<p>폴더 안에 이미지 파일이 없습니다.</p>";
+                    return;
+                }
+
                 images.forEach(img => {
                     const imageElement = document.createElement('img');
-                    imageElement.src = img.download_url; // 원본 이미지 주소
+                    imageElement.src = img.download_url;
                     imageElement.onclick = () => {
                         document.getElementById('modal-img').src = img.download_url;
                         document.getElementById('modal').style.display = 'flex';
@@ -49,7 +60,10 @@
                     gallery.appendChild(imageElement);
                 });
             })
-            .catch(err => console.error("이미지를 불러오지 못했습니다:", err));
+            .catch(err => {
+                console.error(err);
+                document.getElementById('gallery').innerHTML = `<p style="color:red;">${err.message}</p>`;
+            });
     </script>
 </body>
 </html>

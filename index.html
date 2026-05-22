@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>GitHub 이미지 뷰어</title>
+    <title>GitHub 이미지 뷰어2</title>
     <style>
         body { background: #121212; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 0; }
         h1 { padding: 20px 0 10px 0; font-size: 24px; }
@@ -25,23 +25,18 @@
     </div>
 
     <script>
-        // 고정된 실제 사용자 정보 (수정 불필요)
-        const username = "comeback-zunny";
-        const repo = "AIT-Storage";
-        const folderPath = "playing/Jewel Coloring/0NN"; 
-
-        // 올바른 GitHub API 전용 도메인 주소입니다.
-        const apiUrl = `https://github.com{username}/${repo}/contents/${folderPath}`;
+        // 에러를 방지하기 위해 주소를 통째로 완성형으로 고정했습니다.
+        const apiUrl = "https://github.com Coloring/0NN";
 
         fetch(apiUrl)
             .then(res => {
-                if (!res.ok) throw new Error("폴더를 찾을 수 없거나 시스템 주소 오류입니다.");
+                if (!res.ok) throw new Error("폴더 주소를 읽어오지 못했습니다. 잠시 후 다시 시도해주세요.");
                 return res.json();
             })
             .then(data => {
                 const gallery = document.getElementById('gallery');
                 
-                // 이미지 파일만 필터링합니다.
+                // 이미지 파일만 골라냅니다.
                 const images = data.filter(file => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(file.name));
                 
                 if (images.length === 0) {

@@ -140,6 +140,47 @@
             white-space: nowrap;
         }
 
+        .section-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .folder-button {
+            min-height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0 12px;
+            background: var(--panel-strong);
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .folder-button:hover {
+            border-color: rgba(125, 211, 252, 0.45);
+            background: rgba(125, 211, 252, 0.14);
+        }
+
+        .floating-back-button {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 20;
+            min-height: 46px;
+            border: 1px solid rgba(125, 211, 252, 0.45);
+            border-radius: 999px;
+            padding: 0 18px;
+            background: rgba(32, 37, 49, 0.92);
+            box-shadow: var(--shadow);
+            color: var(--text);
+            font-size: 14px;
+            backdrop-filter: blur(12px);
+        }
+
+        .floating-back-button:hover {
+            background: rgba(125, 211, 252, 0.18);
+        }
+
         .gallery {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -331,6 +372,7 @@
         };
 
         const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]);
+        const previewLimit = 5;
         const app = document.getElementById("app");
         const search = document.getElementById("search");
         const tabs = [...document.querySelectorAll(".tab")];
@@ -346,6 +388,7 @@
         let allImages = [];
         let visibleImages = [];
         let activeFilter = "all";
+        let activeFolderKey = "";
         let currentIndex = -1;
 
         init();
@@ -401,6 +444,8 @@
             const game = category === "app-icon" ? "App Icon" : parts[1] || "기타";
             const album = category === "app-icon" ? "" : parts.slice(2, -1).join(" / ");
             const title = [categoryLabels[category], game, album].filter(Boolean).join(" / ");
+            const sectionName = album ? `${categoryLabels[category]} / ${game} / ${album}` : `${categoryLabels[category]} / ${game}`;
+            const sectionKey = `${category}/${game}/${album}`;
             const rawUrl = `https://raw.githubusercontent.com/${repoConfig.owner}/${repoConfig.repo}/${repoConfig.branch}/${encodePath(item.path)}`;
 
             return {
@@ -412,53 +457,148 @@
                 album,
                 fileName,
                 title,
+                sectionName,
+                sectionKey,
                 searchText: `${categoryLabels[category]} ${game} ${album} ${fileName} ${item.path}`.toLowerCase(),
                 sortKey: `${category}/${game}/${album}/${fileName}`
             };
         }
 
         function render() {
-            const query = search.value.trim().toLowerCase();
-            visibleImages = allImages.filter((image) => {
-                const matchesFilter = activeFilter === "all" || image.category === activeFilter;
-                const matchesSearch = query === "" || image.searchText.includes(query);
-                return matchesFilter && matchesSearch;
-            });
+            const filteredImages = getFilteredImages();
 
-            if (visibleImages.length === 0) {
+            if (activeFolderKey) {
+                renderFolderView(filteredImages);
+                return;
+            }
+
+            if (filteredImages.length === 0) {
+                visibleImages = [];
                 app.innerHTML = '<div class="status">조건에 맞는 이미지가 없습니다.</div>';
                 return;
             }
 
-            const grouped = groupBySection(visibleImages);
-            app.innerHTML = [...grouped.entries()].map(([sectionName, images]) => `
+            renderOverview(filteredImages);
+        }
+
+        function getFilteredImages() {
+            const query = search.value.trim().toLowerCase();
+            return allImages.filter((image) => {
+                const matchesFilter = activeFilter === "all" || image.category === activeFilter;
+                const matchesSearch = query === "" || image.searchText.includes(query);
+                return matchesFilter && matchesSearch;
+            });
+        }
+
+        function renderOverview(images) {
+            const grouped = groupBySection(images);
+            visibleImages = [...grouped.values()].flatMap((group) => group.images.slice(0, previewLimit));
+
+            app.innerHTML = [...grouped.values()].map((group) => {
+                const previewImages = group.images.slice(0, previewLimit);
+                const hasMore = group.images.length > previewLimit;
+
+                return `
+                    <section class="section">
+                        <div class="section-head">
+                            <h2 class="section-title">${escapeHtml(group.name)}</h2>
+                            <div class="section-actions">
+                                <span class="section-meta">${group.images.length}장</span>
+                                ${hasMore ? `<button class="folder-button" type="button" data-folder-key="${escapeHtml(group.key)}">전체 보기</button>` : ""}
+                            </div>
+                        </div>
+                        <div class="gallery">
+                            ${previewImages.map(renderCard).join("")}
+                        </div>
+                    </section>
+                `;
+            }).join("");
+
+            bindGalleryEvents();
+        }
+
+        function renderFolderView(images) {
+            const folderImages = images.filter((image) => image.sectionKey === activeFolderKey);
+            const folder = allImages.find((image) => image.sectionKey === activeFolderKey);
+
+            if (folderImages.length === 0) {
+                visibleImages = [];
+                app.innerHTML = `
+                    <section class="section">
+                        <div class="section-head">
+                            <h2 class="section-title">${escapeHtml(folder?.sectionName || "폴더")}</h2>
+                        </div>
+                        <div class="status">조건에 맞는 이미지가 없습니다.</div>
+                    </section>
+                    ${renderBackButton()}
+                `;
+                bindBackButton();
+                return;
+            }
+
+            visibleImages = folderImages;
+            app.innerHTML = `
                 <section class="section">
                     <div class="section-head">
-                        <h2 class="section-title">${escapeHtml(sectionName)}</h2>
-                        <span class="section-meta">${images.length}장</span>
+                        <h2 class="section-title">${escapeHtml(folderImages[0].sectionName)}</h2>
+                        <div class="section-actions">
+                            <span class="section-meta">${folderImages.length}장</span>
+                        </div>
                     </div>
                     <div class="gallery">
-                        ${images.map(renderCard).join("")}
+                        ${folderImages.map(renderCard).join("")}
                     </div>
                 </section>
-            `).join("");
+                ${renderBackButton()}
+            `;
 
+            bindBackButton();
+            bindGalleryEvents();
+        }
+
+        function renderBackButton() {
+            return '<button class="floating-back-button" type="button" id="backButton">목록으로</button>';
+        }
+
+        function bindGalleryEvents() {
             [...app.querySelectorAll(".thumb-button")].forEach((button) => {
                 button.addEventListener("click", () => openModal(Number(button.dataset.index)));
+            });
+
+            [...app.querySelectorAll(".folder-button")].forEach((button) => {
+                button.addEventListener("click", () => {
+                    activeFolderKey = button.dataset.folderKey;
+                    render();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+            });
+        }
+
+        function bindBackButton() {
+            const backButton = document.getElementById("backButton");
+
+            if (!backButton) {
+                return;
+            }
+
+            backButton.addEventListener("click", () => {
+                activeFolderKey = "";
+                render();
+                window.scrollTo({ top: 0, behavior: "smooth" });
             });
         }
 
         function groupBySection(images) {
             return images.reduce((groups, image) => {
-                const sectionName = image.album
-                    ? `${image.categoryLabel} / ${image.game} / ${image.album}`
-                    : `${image.categoryLabel} / ${image.game}`;
-
-                if (!groups.has(sectionName)) {
-                    groups.set(sectionName, []);
+                if (!groups.has(image.sectionKey)) {
+                    groups.set(image.sectionKey, {
+                        key: image.sectionKey,
+                        name: image.sectionName,
+                        images: []
+                    });
                 }
 
-                groups.get(sectionName).push(image);
+                groups.get(image.sectionKey).images.push(image);
                 return groups;
             }, new Map());
         }
@@ -527,6 +667,7 @@
         tabs.forEach((tab) => {
             tab.addEventListener("click", () => {
                 activeFilter = tab.dataset.filter;
+                activeFolderKey = "";
                 tabs.forEach((item) => item.classList.toggle("active", item === tab));
                 render();
             });

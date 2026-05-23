@@ -75,32 +75,11 @@
             outline: none;
         }
 
-        .tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
         button {
             border: 0;
             color: inherit;
             font: inherit;
             cursor: pointer;
-        }
-
-        .tab {
-            min-height: 44px;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            padding: 0 14px;
-            background: var(--panel);
-            color: var(--muted);
-        }
-
-        .tab.active {
-            border-color: rgba(125, 211, 252, 0.45);
-            background: rgba(125, 211, 252, 0.14);
-            color: var(--text);
         }
 
         main {
@@ -115,6 +94,88 @@
             min-height: 220px;
             color: var(--muted);
             text-align: center;
+        }
+
+        .category-home {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            min-height: 320px;
+            align-items: stretch;
+        }
+
+        .category-card {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            min-height: 240px;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 26px;
+            background: #171a21;
+            box-shadow: var(--shadow);
+            text-align: left;
+        }
+
+        .category-card-thumb {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.18s ease;
+        }
+
+        .category-card-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background: linear-gradient(180deg, rgba(15, 17, 21, 0.15), rgba(15, 17, 21, 0.72));
+            pointer-events: none;
+        }
+
+        .category-card:hover {
+            border-color: rgba(125, 211, 252, 0.55);
+        }
+
+        .category-card:hover .category-card-thumb {
+            transform: scale(1.04);
+        }
+
+        .category-card strong {
+            position: relative;
+            z-index: 2;
+            display: block;
+            font-size: clamp(30px, 5vw, 54px);
+            letter-spacing: 0.08em;
+            text-shadow: 0 2px 16px rgba(0, 0, 0, 0.65);
+        }
+
+        .category-card span {
+            position: relative;
+            z-index: 2;
+            margin-top: 10px;
+            color: #d7dee9;
+            font-size: 14px;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+        }
+
+        .view-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .view-title {
+            margin: 0;
+            font-size: clamp(28px, 5vw, 48px);
+            letter-spacing: 0.08em;
         }
 
         .section {
@@ -156,7 +217,22 @@
             font-size: 13px;
         }
 
+        .home-button {
+            min-height: 38px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0 14px;
+            background: var(--panel);
+            color: var(--text);
+            font-size: 13px;
+        }
+
         .folder-button:hover {
+            border-color: rgba(125, 211, 252, 0.45);
+            background: rgba(125, 211, 252, 0.14);
+        }
+
+        .home-button:hover {
             border-color: rgba(125, 211, 252, 0.45);
             background: rgba(125, 211, 252, 0.14);
         }
@@ -306,18 +382,16 @@
                 grid-template-columns: 1fr;
             }
 
-            .tabs {
-                overflow-x: auto;
-                flex-wrap: nowrap;
-                padding-bottom: 2px;
-            }
-
-            .tab {
-                flex: 0 0 auto;
-            }
-
             .gallery {
                 grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+            }
+
+            .category-home {
+                grid-template-columns: 1fr;
+            }
+
+            .category-card {
+                min-height: 180px;
             }
         }
     </style>
@@ -326,15 +400,9 @@
     <header>
         <div class="header-inner">
             <h1>AIT 이미지 뷰어</h1>
-            <p class="subtitle">GitHub 저장소의 폴더 구조를 읽어 플레이 중인 게임과 개발 중인 게임 스크린샷을 보여줍니다.</p>
+            <p class="subtitle">GitHub 저장소의 폴더 구조를 읽어 PLAYING과 HISTORY 스크린샷을 보여줍니다.</p>
             <div class="toolbar">
                 <input class="search" id="search" type="search" placeholder="게임명, 폴더명, 파일명 검색">
-                <nav class="tabs" aria-label="카테고리">
-                    <button class="tab active" type="button" data-filter="all">전체</button>
-                    <button class="tab" type="button" data-filter="playing">플레이 중</button>
-                    <button class="tab" type="button" data-filter="history">개발 중</button>
-                    <button class="tab" type="button" data-filter="app-icon">앱 아이콘</button>
-                </nav>
             </div>
         </div>
     </header>
@@ -366,16 +434,22 @@
         };
 
         const categoryLabels = {
-            playing: "플레이 중인 게임",
-            history: "개발 중인 게임",
+            playing: "PLAYING",
+            history: "HISTORY",
             "app-icon": "앱 아이콘"
+        };
+
+        const categoryThumbnails = {
+            playing: "playing/thumbnail.png",
+            history: "history/thumbnail.png",
+            "app-icon": "app-icon/thumbnail.png"
         };
 
         const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]);
         const previewLimit = 5;
         const app = document.getElementById("app");
+        const toolbar = document.querySelector(".toolbar");
         const search = document.getElementById("search");
-        const tabs = [...document.querySelectorAll(".tab")];
         const modal = document.getElementById("modal");
         const modalImage = document.getElementById("modalImage");
         const modalTitle = document.getElementById("modalTitle");
@@ -387,7 +461,7 @@
 
         let allImages = [];
         let visibleImages = [];
-        let activeFilter = "all";
+        let activeFilter = "";
         let activeFolderKey = "";
         let currentIndex = -1;
 
@@ -434,7 +508,11 @@
         function isImagePath(path) {
             const lowerPath = path.toLowerCase();
             const extension = lowerPath.slice(lowerPath.lastIndexOf("."));
-            return imageExtensions.has(extension) && /^(playing|history|app-icon)\//.test(path);
+            return imageExtensions.has(extension) && /^(playing|history|app-icon)\//.test(path) && !isCategoryThumbnailPath(path);
+        }
+
+        function isCategoryThumbnailPath(path) {
+            return Object.values(categoryThumbnails).includes(path);
         }
 
         function toImageItem(item) {
@@ -446,7 +524,7 @@
             const title = [categoryLabels[category], game, album].filter(Boolean).join(" / ");
             const sectionName = album ? `${categoryLabels[category]} / ${game} / ${album}` : `${categoryLabels[category]} / ${game}`;
             const sectionKey = `${category}/${game}/${album}`;
-            const rawUrl = `https://raw.githubusercontent.com/${repoConfig.owner}/${repoConfig.repo}/${repoConfig.branch}/${encodePath(item.path)}`;
+            const rawUrl = getRawUrl(item.path);
 
             return {
                 path: item.path,
@@ -465,6 +543,13 @@
         }
 
         function render() {
+            toolbar.hidden = !activeFilter;
+
+            if (!activeFilter) {
+                renderHome();
+                return;
+            }
+
             const filteredImages = getFilteredImages();
 
             if (activeFolderKey) {
@@ -474,17 +559,56 @@
 
             if (filteredImages.length === 0) {
                 visibleImages = [];
-                app.innerHTML = '<div class="status">조건에 맞는 이미지가 없습니다.</div>';
+                app.innerHTML = `
+                    <div class="view-head">
+                        <h2 class="view-title">${categoryLabels[activeFilter]}</h2>
+                        <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                    </div>
+                    <div class="status">조건에 맞는 이미지가 없습니다.</div>
+                `;
+                bindHomeButton();
                 return;
             }
 
             renderOverview(filteredImages);
         }
 
+        function renderHome() {
+            visibleImages = [];
+            const categories = ["playing", "history", "app-icon"];
+
+            app.innerHTML = `
+                <div class="category-home">
+                    ${categories.map((category) => {
+                        const count = allImages.filter((image) => image.category === category).length;
+
+                        return `
+                            <button class="category-card" type="button" data-category="${category}">
+                                <img class="category-card-thumb" src="${getSiteAssetUrl(categoryThumbnails[category])}" alt="">
+                                <span class="category-card-overlay" aria-hidden="true"></span>
+                                <strong>${categoryLabels[category]}</strong>
+                                <span>${count}장 보기</span>
+                            </button>
+                        `;
+                    }).join("")}
+                </div>
+            `;
+
+            [...app.querySelectorAll(".category-card")].forEach((button) => {
+                button.addEventListener("click", () => {
+                    activeFilter = button.dataset.category;
+                    activeFolderKey = "";
+                    search.value = "";
+                    render();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+            });
+        }
+
         function getFilteredImages() {
             const query = search.value.trim().toLowerCase();
             return allImages.filter((image) => {
-                const matchesFilter = activeFilter === "all" || image.category === activeFilter;
+                const matchesFilter = image.category === activeFilter;
                 const matchesSearch = query === "" || image.searchText.includes(query);
                 return matchesFilter && matchesSearch;
             });
@@ -494,7 +618,12 @@
             const grouped = groupBySection(images);
             visibleImages = [...grouped.values()].flatMap((group) => group.images.slice(0, previewLimit));
 
-            app.innerHTML = [...grouped.values()].map((group) => {
+            app.innerHTML = `
+                <div class="view-head">
+                    <h2 class="view-title">${categoryLabels[activeFilter]}</h2>
+                    <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                </div>
+                ${[...grouped.values()].map((group) => {
                 const previewImages = group.images.slice(0, previewLimit);
                 const hasMore = group.images.length > previewLimit;
 
@@ -512,8 +641,10 @@
                         </div>
                     </section>
                 `;
-            }).join("");
+                }).join("")}
+            `;
 
+            bindHomeButton();
             bindGalleryEvents();
         }
 
@@ -558,6 +689,22 @@
 
         function renderBackButton() {
             return '<button class="floating-back-button" type="button" id="backButton">목록으로</button>';
+        }
+
+        function bindHomeButton() {
+            const homeButton = document.getElementById("homeButton");
+
+            if (!homeButton) {
+                return;
+            }
+
+            homeButton.addEventListener("click", () => {
+                activeFilter = "";
+                activeFolderKey = "";
+                search.value = "";
+                render();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            });
         }
 
         function bindGalleryEvents() {
@@ -654,6 +801,14 @@
             return path.split("/").map(encodeURIComponent).join("/");
         }
 
+        function getRawUrl(path) {
+            return `https://raw.githubusercontent.com/${repoConfig.owner}/${repoConfig.repo}/${repoConfig.branch}/${encodePath(path)}`;
+        }
+
+        function getSiteAssetUrl(path) {
+            return new URL(encodePath(path), window.location.href).href;
+        }
+
         function escapeHtml(value) {
             return String(value).replace(/[&<>"']/g, (char) => ({
                 "&": "&amp;",
@@ -663,15 +818,6 @@
                 "'": "&#39;"
             })[char]);
         }
-
-        tabs.forEach((tab) => {
-            tab.addEventListener("click", () => {
-                activeFilter = tab.dataset.filter;
-                activeFolderKey = "";
-                tabs.forEach((item) => item.classList.toggle("active", item === tab));
-                render();
-            });
-        });
 
         search.addEventListener("input", render);
         closeButton.addEventListener("click", closeModal);

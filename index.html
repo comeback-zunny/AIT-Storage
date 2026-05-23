@@ -406,6 +406,42 @@
             .category-card {
                 min-height: 180px;
             }
+
+            .modal.open {
+                grid-template-rows: minmax(0, 1fr);
+            }
+
+            .modal-bar {
+                position: absolute;
+                top: 0;
+                right: 0;
+                left: 0;
+                z-index: 2;
+                justify-content: flex-end;
+                padding: 12px;
+                background: linear-gradient(180deg, rgba(15, 17, 21, 0.9), transparent);
+            }
+
+            .modal-title {
+                display: none;
+            }
+
+            .modal-stage {
+                padding: 72px 12px 64px;
+            }
+
+            .modal-footer {
+                position: absolute;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                z-index: 2;
+                overflow: hidden;
+                padding: 40px 12px 16px;
+                background: linear-gradient(0deg, rgba(15, 17, 21, 0.9), transparent);
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
@@ -824,11 +860,8 @@
             const stageStyle = getComputedStyle(modalStage);
             const horizontalPadding = parseFloat(stageStyle.paddingLeft) + parseFloat(stageStyle.paddingRight);
             const verticalPadding = parseFloat(stageStyle.paddingTop) + parseFloat(stageStyle.paddingBottom);
-            const availableWidth = Math.max(0, window.innerWidth - horizontalPadding);
-            const availableHeight = Math.max(
-                0,
-                window.innerHeight - modalBar.offsetHeight - modalFooter.offsetHeight - verticalPadding
-            );
+            const availableWidth = Math.max(0, modalStage.clientWidth - horizontalPadding);
+            const availableHeight = Math.max(0, modalStage.clientHeight - verticalPadding);
 
             modalImage.style.width = "auto";
             modalImage.style.height = "auto";

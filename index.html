@@ -571,15 +571,27 @@
         }
 
         function isThumbnailPath(path) {
-            return path.split("/").at(-1).toLowerCase() === "thumbnail.png";
+            const parts = path.split("/");
+            const category = parts[0];
+            const fileName = parts.at(-1).toLowerCase();
+
+            if (fileName !== "thumbnail.png") {
+                return false;
+            }
+
+            if (Object.values(categoryThumbnails).includes(path)) {
+                return true;
+            }
+
+            return category === "playing" || category === "history";
         }
 
         function toImageItem(item) {
             const parts = item.path.split("/");
             const category = parts[0];
             const fileName = parts.at(-1);
-            const game = category === "app-icon" ? "App Icon" : parts[1] || "기타";
-            const album = category === "app-icon" ? "" : parts.slice(2, -1).join(" / ");
+            const game = parts[1] || (category === "app-icon" ? "App Icon" : "기타");
+            const album = parts.slice(2, -1).join(" / ");
             const title = [categoryLabels[category], game, album].filter(Boolean).join(" / ");
             const sectionName = album ? `${categoryLabels[category]} / ${game} / ${album}` : `${categoryLabels[category]} / ${game}`;
             const sectionKey = `${category}/${game}/${album}`;
@@ -905,7 +917,7 @@
         }
 
         function isGameCategory(category) {
-            return category === "playing" || category === "history";
+            return category === "playing" || category === "history" || category === "app-icon";
         }
 
         function getCurrentViewTitle() {
@@ -913,7 +925,7 @@
         }
 
         function getGameThumbnailPath(category, game) {
-            return `${category}/${game}/thumbnail.png`;
+            return category === "app-icon" ? `${category}/${game}/app-icon.png` : `${category}/${game}/thumbnail.png`;
         }
 
         function renderCard(image) {

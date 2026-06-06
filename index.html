@@ -520,6 +520,7 @@
         let allImages = [];
         let visibleImages = [];
         let activeFilter = "";
+        let activeGame = "";
         let activeFolderKey = "";
         let currentIndex = -1;
 
@@ -566,11 +567,11 @@
         function isImagePath(path) {
             const lowerPath = path.toLowerCase();
             const extension = lowerPath.slice(lowerPath.lastIndexOf("."));
-            return imageExtensions.has(extension) && /^(playing|history|app-icon)\//.test(path) && !isCategoryThumbnailPath(path);
+            return imageExtensions.has(extension) && /^(playing|history|app-icon)\//.test(path) && !isThumbnailPath(path);
         }
 
-        function isCategoryThumbnailPath(path) {
-            return Object.values(categoryThumbnails).includes(path);
+        function isThumbnailPath(path) {
+            return path.split("/").at(-1).toLowerCase() === "thumbnail.png";
         }
 
         function toImageItem(item) {
@@ -608,6 +609,11 @@
                 return;
             }
 
+            if (isGameCategory(activeFilter) && !activeGame) {
+                renderGameList(getFilteredImages());
+                return;
+            }
+
             const filteredImages = getFilteredImages();
 
             if (activeFolderKey) {
@@ -619,12 +625,16 @@
                 visibleImages = [];
                 app.innerHTML = `
                     <div class="view-head">
-                        <h2 class="view-title">${categoryLabels[activeFilter]}</h2>
-                        <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                        <h2 class="view-title">${escapeHtml(getCurrentViewTitle())}</h2>
+                        <div class="section-actions">
+                            ${activeGame ? '<button class="home-button" type="button" id="gameListButton">게임 선택</button>' : ""}
+                            <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                        </div>
                     </div>
                     <div class="status">조건에 맞는 이미지가 없습니다.</div>
                 `;
                 bindHomeButton();
+                bindGameListButton();
                 return;
             }
 
@@ -655,6 +665,7 @@
             [...app.querySelectorAll(".category-card")].forEach((button) => {
                 button.addEventListener("click", () => {
                     activeFilter = button.dataset.category;
+                    activeGame = "";
                     activeFolderKey = "";
                     search.value = "";
                     render();
@@ -667,9 +678,47 @@
             const query = search.value.trim().toLowerCase();
             return allImages.filter((image) => {
                 const matchesFilter = image.category === activeFilter;
+                const matchesGame = activeGame === "" || image.game === activeGame;
                 const matchesSearch = query === "" || image.searchText.includes(query);
-                return matchesFilter && matchesSearch;
+                return matchesFilter && matchesGame && matchesSearch;
             });
+        }
+
+        function renderGameList(images) {
+            visibleImages = [];
+            const grouped = groupByGame(images);
+
+            if (grouped.size === 0) {
+                app.innerHTML = `
+                    <div class="view-head">
+                        <h2 class="view-title">${categoryLabels[activeFilter]}</h2>
+                        <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                    </div>
+                    <div class="status">조건에 맞는 게임이 없습니다.</div>
+                `;
+                bindHomeButton();
+                return;
+            }
+
+            app.innerHTML = `
+                <div class="view-head">
+                    <h2 class="view-title">${categoryLabels[activeFilter]}</h2>
+                    <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                </div>
+                <div class="category-home">
+                    ${[...grouped.values()].map((group) => `
+                        <button class="category-card" type="button" data-game="${escapeHtml(group.game)}">
+                            <img class="category-card-thumb" src="${getSiteAssetUrl(getGameThumbnailPath(activeFilter, group.game))}" alt="" onerror="this.hidden=true">
+                            <span class="category-card-overlay" aria-hidden="true"></span>
+                            <strong>${escapeHtml(group.game)}</strong>
+                            <span>${group.images.length}장 보기</span>
+                        </button>
+                    `).join("")}
+                </div>
+            `;
+
+            bindHomeButton();
+            bindGameCards();
         }
 
         function renderOverview(images) {
@@ -678,8 +727,11 @@
 
             app.innerHTML = `
                 <div class="view-head">
-                    <h2 class="view-title">${categoryLabels[activeFilter]}</h2>
-                    <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                    <h2 class="view-title">${escapeHtml(getCurrentViewTitle())}</h2>
+                    <div class="section-actions">
+                        ${activeGame ? '<button class="home-button" type="button" id="gameListButton">게임 선택</button>' : ""}
+                        <button class="home-button" type="button" id="homeButton">카테고리 선택</button>
+                    </div>
                 </div>
                 ${[...grouped.values()].map((group) => {
                 const previewImages = group.images.slice(0, previewLimit);
@@ -703,6 +755,7 @@
             `;
 
             bindHomeButton();
+            bindGameListButton();
             bindGalleryEvents();
         }
 
@@ -758,10 +811,39 @@
 
             homeButton.addEventListener("click", () => {
                 activeFilter = "";
+                activeGame = "";
                 activeFolderKey = "";
                 search.value = "";
                 render();
                 window.scrollTo({ top: 0, behavior: "smooth" });
+            });
+        }
+
+        function bindGameListButton() {
+            const gameListButton = document.getElementById("gameListButton");
+
+            if (!gameListButton) {
+                return;
+            }
+
+            gameListButton.addEventListener("click", () => {
+                activeGame = "";
+                activeFolderKey = "";
+                search.value = "";
+                render();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            });
+        }
+
+        function bindGameCards() {
+            [...app.querySelectorAll(".category-card[data-game]")].forEach((button) => {
+                button.addEventListener("click", () => {
+                    activeGame = button.dataset.game;
+                    activeFolderKey = "";
+                    search.value = "";
+                    render();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
             });
         }
 
@@ -806,6 +888,32 @@
                 groups.get(image.sectionKey).images.push(image);
                 return groups;
             }, new Map());
+        }
+
+        function groupByGame(images) {
+            return images.reduce((groups, image) => {
+                if (!groups.has(image.game)) {
+                    groups.set(image.game, {
+                        game: image.game,
+                        images: []
+                    });
+                }
+
+                groups.get(image.game).images.push(image);
+                return groups;
+            }, new Map());
+        }
+
+        function isGameCategory(category) {
+            return category === "playing" || category === "history";
+        }
+
+        function getCurrentViewTitle() {
+            return activeGame ? `${categoryLabels[activeFilter]} / ${activeGame}` : categoryLabels[activeFilter];
+        }
+
+        function getGameThumbnailPath(category, game) {
+            return `${category}/${game}/thumbnail.png`;
         }
 
         function renderCard(image) {
